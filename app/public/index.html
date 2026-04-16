@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RepairFlow</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
+
+    header {
+      background: #1a73e8; color: white; padding: 16px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    header h1 { font-size: 1.5rem; font-weight: 700; }
+    header span { font-size: 0.9rem; opacity: .8; }
+
+    nav { background: #155db0; display: flex; gap: 4px; padding: 0 32px; }
+    nav button {
+      background: none; border: none; color: #cce0ff; padding: 12px 20px;
+      cursor: pointer; font-size: 0.95rem; border-bottom: 3px solid transparent;
+      transition: all .2s;
+    }
+    nav button.active, nav button:hover { color: white; border-bottom-color: white; }
+
+    main { max-width: 1100px; margin: 32px auto; padding: 0 20px; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card {
+      background: white; border-radius: 10px; padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1); margin-bottom: 20px;
+    }
+    .card h2 { margin-bottom: 18px; color: #1a73e8; font-size: 1.1rem; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+    .stat .number { font-size: 2rem; font-weight: 700; color: #1a73e8; }
+    .stat .label { font-size: 0.85rem; color: #666; margin-top: 4px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 0.85rem; color: #555; border-bottom: 2px solid #e0e0e0; }
+    tbody td { padding: 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+    tbody tr:hover { background: #f8f9ff; }
+
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600;
+    }
+    .badge.pending    { background: #fff3cd; color: #856404; }
+    .badge.diagnosed  { background: #cff4fc; color: #0a6479; }
+    .badge.in_progress{ background: #d1ecf1; color: #0c5460; }
+    .badge.done       { background: #d4edda; color: #155724; }
+    .badge.delivered  { background: #e2e3e5; color: #383d41; }
+
+    form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    form label { font-size: 0.85rem; color: #555; display: block; margin-bottom: 4px; }
+    form input, form select, form textarea {
+      width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem;
+    }
+    form textarea { resize: vertical; min-height: 80px; }
+    form .full { grid-column: 1 / -1; }
+
+    .btn {
+      padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 600; transition: opacity .2s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-danger  { background: #dc3545; color: white; }
+    .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      z-index: 100; justify-content: center; align-items: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white; border-radius: 12px; padding: 28px;
+      max-width: 520px; width: 90%; max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { margin-bottom: 16px; color: #1a73e8; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; background: #333; color: white;
+      padding: 12px 20px; border-radius: 8px; font-size: 0.9rem;
+      display: none; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,.3);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🔧 RepairFlow</h1>
+  <span>Gestão de Reparações Técnicas</span>
+</header>
+
+<nav>
+  <button class="active" onclick="showSection('dashboard')">Dashboard</button>
+  <button onclick="showSection('repairs')">Reparações</button>
+  <button onclick="showSection('clients')">Clientes</button>
+  <button onclick="showSection('new-repair')">Nova Reparação</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="section active">
+    <div class="stats" id="stats">
+      <div class="stat"><div class="number" id="stat-total">–</div><div class="label">Total</div></div>
+      <div class="stat"><div class="number" id="stat-pending">–</div><div class="label">Pendentes</div></div>
+      <div class="stat"><div class="number" id="stat-progress">–</div><div class="label">Em Progresso</div></div>
+      <div class="stat"><div class="number" id="stat-done">–</div><div class="label">Concluídas</div></div>
+    </div>
+    <div class="card">
+      <h2>Reparações Recentes</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Cliente</th><th>Equipamento</th><th>Estado</th><th>Data</th></tr></thead>
+        <tbody id="recent-table"><tr><td colspan="5" style="text-align:center;color:#999">A carregar...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- REPARAÇÕES -->
+  <div id="repairs" class="section">
+    <div class="card">
+      <h2>Todas as Reparações</h2>
+      <table>
+        <thead><tr><th>Cliente</th><th>Equipamento</th><th>Problema</th><th>Estado</th><th>Orçamento</th><th>Ações</th></tr></thead>
+        <tbody id="repairs-table"><tr><td colspan="6" style="text-align:center;color:#999">A carregar...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div id="clients" class="section">
+    <div class="card">
+      <h2>Clientes Registados</h2>
+      <button class="btn btn-primary btn-sm" style="margin-bottom:14px" onclick="openNewClientModal()">+ Novo Cliente</button>
+      <table>
+        <thead><tr><th>Nome</th><th>Email</th><th>Telefone</th><th>Registado em</th></tr></thead>
+        <tbody id="clients-table"><tr><td colspan="4" style="text-align:center;color:#999">A carregar...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- NOVA REPARAÇÃO -->
+  <div id="new-repair" class="section">
+    <div class="card">
+      <h2>Registar Nova Reparação</h2>
+      <form id="repair-form" onsubmit="submitRepair(event)">
+        <div class="row">
+          <div><label>Nome do Cliente *</label><input type="text" id="f-clientName" required /></div>
+          <div><label>Email do Cliente</label><input type="email" id="f-clientEmail" /></div>
+        </div>
+        <div class="row">
+          <div><label>Telefone</label><input type="tel" id="f-clientPhone" /></div>
+          <div><label>Tipo de Equipamento *</label>
+            <select id="f-equipment" required>
+              <option value="">Selecionar...</option>
+              <option>Smartphone</option><option>Computador Portátil</option>
+              <option>Computador Desktop</option><option>Consola</option>
+              <option>Tablet</option><option>Outro</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div><label>Marca</label><input type="text" id="f-brand" /></div>
+          <div><label>Modelo</label><input type="text" id="f-model" /></div>
+        </div>
+        <div class="row">
+          <div class="full"><label>Descrição do Problema *</label><textarea id="f-problem" required></textarea></div>
+        </div>
+        <div class="row">
+          <div><label>Data Prevista de Entrega</label><input type="date" id="f-delivery" /></div>
+          <div style="display:flex;align-items:flex-end">
+            <button type="submit" class="btn btn-primary" style="width:100%">Registar Reparação</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL: Atualizar Estado -->
+<div class="modal-overlay" id="status-modal">
+  <div class="modal">
+    <h2>Atualizar Estado</h2>
+    <input type="hidden" id="modal-repair-id" />
+    <div style="margin-bottom:14px">
+      <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Novo Estado</label>
+      <select id="modal-status" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px">
+        <option value="pending">Pendente</option>
+        <option value="diagnosed">Diagnosticado</option>
+        <option value="in_progress">Em Progresso</option>
+        <option value="done">Concluído</option>
+        <option value="delivered">Entregue</option>
+      </select>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Orçamento (€)</label>
+      <input type="number" id="modal-budget" step="0.01" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px" />
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Nota</label>
+      <textarea id="modal-note" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px;resize:vertical;min-height:70px"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:#eee" onclick="closeModal('status-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitStatusUpdate()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Novo Cliente -->
+<div class="modal-overlay" id="client-modal">
+  <div class="modal">
+    <h2>Novo Cliente</h2>
+    <div style="margin-bottom:12px"><label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Nome *</label><input type="text" id="c-name" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px" /></div>
+    <div style="margin-bottom:12px"><label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Email *</label><input type="email" id="c-email" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px" /></div>
+    <div style="margin-bottom:12px"><label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Telefone</label><input type="tel" id="c-phone" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px" /></div>
+    <div class="modal-footer">
+      <button class="btn" style="background:#eee" onclick="closeModal('client-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitNewClient()">Criar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = '/api';
+
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+    if (id === 'dashboard') loadDashboard();
+    if (id === 'repairs') loadRepairs();
+    if (id === 'clients') loadClients();
+  }
+
+  function toast(msg, ok = true) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = ok ? '#28a745' : '#dc3545';
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3000);
+  }
+
+  function statusBadge(s) {
+    const labels = { pending:'Pendente', diagnosed:'Diagnosticado', in_progress:'Em Progresso', done:'Concluído', delivered:'Entregue' };
+    return `<span class="badge ${s}">${labels[s] || s}</span>`;
+  }
+
+  function fmtDate(d) {
+    if (!d) return '–';
+    return new Date(d).toLocaleDateString('pt-PT');
+  }
+
+  async function loadDashboard() {
+    const repairs = await fetch(`${API}/repairs`).then(r => r.json()).catch(() => []);
+    document.getElementById('stat-total').textContent   = repairs.length;
+    document.getElementById('stat-pending').textContent = repairs.filter(r => r.status === 'pending').length;
+    document.getElementById('stat-progress').textContent= repairs.filter(r => r.status === 'in_progress').length;
+    document.getElementById('stat-done').textContent    = repairs.filter(r => r.status === 'done').length;
+
+    const tbody = document.getElementById('recent-table');
+    const recent = repairs.slice(0, 8);
+    tbody.innerHTML = recent.length
+      ? recent.map(r => `<tr>
+          <td style="font-size:.78rem;color:#999">${r.id.slice(0,8)}…</td>
+          <td>${r.clientName}</td>
+          <td>${r.equipment} ${r.brand ? '– '+r.brand : ''}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td>${fmtDate(r.createdAt)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:#999">Sem reparações</td></tr>';
+  }
+
+  async function loadRepairs() {
+    const repairs = await fetch(`${API}/repairs`).then(r => r.json()).catch(() => []);
+    const tbody = document.getElementById('repairs-table');
+    tbody.innerHTML = repairs.length
+      ? repairs.map(r => `<tr>
+          <td>${r.clientName}</td>
+          <td>${r.equipment}${r.model ? ' '+r.model : ''}</td>
+          <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.problem}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td>${r.budget != null ? r.budget+'€' : '–'}</td>
+          <td><button class="btn btn-primary btn-sm" onclick="openStatusModal('${r.id}','${r.status}')">Atualizar</button></td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center;color:#999">Sem reparações</td></tr>';
+  }
+
+  async function loadClients() {
+    const clients = await fetch(`${API}/clients`).then(r => r.json()).catch(() => []);
+    const tbody = document.getElementById('clients-table');
+    tbody.innerHTML = clients.length
+      ? clients.map(c => `<tr>
+          <td>${c.name}</td><td>${c.email}</td>
+          <td>${c.phone || '–'}</td><td>${fmtDate(c.createdAt)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="4" style="text-align:center;color:#999">Sem clientes</td></tr>';
+  }
+
+  async function submitRepair(e) {
+    e.preventDefault();
+    const body = {
+      clientName: document.getElementById('f-clientName').value,
+      clientEmail: document.getElementById('f-clientEmail').value,
+      clientPhone: document.getElementById('f-clientPhone').value,
+      equipment: document.getElementById('f-equipment').value,
+      brand: document.getElementById('f-brand').value,
+      model: document.getElementById('f-model').value,
+      problem: document.getElementById('f-problem').value,
+      estimatedDelivery: document.getElementById('f-delivery').value,
+    };
+    const res = await fetch(`${API}/repairs`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (res.ok) { toast('Reparação registada!'); document.getElementById('repair-form').reset(); }
+    else toast('Erro ao registar reparação', false);
+  }
+
+  function openStatusModal(id, currentStatus) {
+    document.getElementById('modal-repair-id').value = id;
+    document.getElementById('modal-status').value = currentStatus;
+    document.getElementById('modal-budget').value = '';
+    document.getElementById('modal-note').value = '';
+    document.getElementById('status-modal').classList.add('open');
+  }
+
+  async function submitStatusUpdate() {
+    const id = document.getElementById('modal-repair-id').value;
+    const status = document.getElementById('modal-status').value;
+    const budget = document.getElementById('modal-budget').value;
+    const note = document.getElementById('modal-note').value;
+    const res = await fetch(`${API}/repairs/${id}/status`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ status, note, budget: budget ? parseFloat(budget) : undefined })
+    });
+    if (res.ok) { toast('Estado atualizado!'); closeModal('status-modal'); loadRepairs(); }
+    else toast('Erro ao atualizar', false);
+  }
+
+  function openNewClientModal() {
+    document.getElementById('client-modal').classList.add('open');
+  }
+
+  async function submitNewClient() {
+    const name = document.getElementById('c-name').value;
+    const email = document.getElementById('c-email').value;
+    const phone = document.getElementById('c-phone').value;
+    const res = await fetch(`${API}/clients`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email, phone }) });
+    if (res.ok) { toast('Cliente criado!'); closeModal('client-modal'); loadClients(); }
+    else toast('Erro ao criar cliente', false);
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // Carrega dashboard ao iniciar
+  loadDashboard();
+</script>
+</body>
+</html>

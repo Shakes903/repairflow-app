@@ -1,0 +1,61 @@
+name: RepairFlow CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  ACR_NAME: ${{ secrets.ACR_NAME }}          # ex: repairflowacr12345
+  ACR_SERVER: ${{ secrets.ACR_SERVER }}      # ex: repairflowacr12345.azurecr.io
+  APP_SERVICE_NAME: ${{ secrets.APP_SERVICE_NAME }}
+  RESOURCE_GROUP: repairflow-rg
+  IMAGE_NAME: repairflow
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout do código
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # 2. Login no Azure
+      - name: Login Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 3. Login no Azure Container Registry
+      - name: Login ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # 4. Build e push da imagem Docker
+      - name: Build e Push imagem Docker
+        working-directory: ./app
+        run: |
+          docker build -t $ACR_SERVER/$IMAGE_NAME:${{ github.sha }} .
+          docker tag  $ACR_SERVER/$IMAGE_NAME:${{ github.sha }} $ACR_SERVER/$IMAGE_NAME:latest
+          docker push $ACR_SERVER/$IMAGE_NAME:${{ github.sha }}
+          docker push $ACR_SERVER/$IMAGE_NAME:latest
+
+      # 5. Deploy para Azure App Service
+      - name: Deploy para App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.APP_SERVICE_NAME }}
+          images: ${{ env.ACR_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # 6. Deploy das Azure Functions
+      - name: Deploy Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ secrets.FUNCTION_APP_NAME }}
+          package: ./functions
+          respect-funcignore: true

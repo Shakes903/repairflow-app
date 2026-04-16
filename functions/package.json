@@ -1,0 +1,12 @@
+{
+  "name": "repairflow-functions",
+  "version": "1.0.0",
+  "description": "Azure Functions do RepairFlow",
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.0.0",
+    "@azure/communication-email": "^1.0.0"
+  }
+}

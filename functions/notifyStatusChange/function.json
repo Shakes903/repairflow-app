@@ -1,0 +1,15 @@
+{
+  "bindings": [
+    {
+      "type": "cosmosDBTrigger",
+      "name": "documents",
+      "direction": "in",
+      "leaseCollectionName": "leases",
+      "connectionStringSetting": "COSMOS_CONNECTION_STRING",
+      "databaseName": "repairflow",
+      "collectionName": "repairs",
+      "createLeaseCollectionIfNotExists": true,
+      "feedPollDelay": 5000
+    }
+  ]
+}
