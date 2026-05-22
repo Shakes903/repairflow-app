@@ -176,6 +176,9 @@
         </div>
         <div class="row">
           <div><label>Data Prevista de Entrega</label><input type="date" id="f-delivery" /></div>
+          <div><label>Foto do Equipamento</label><input type="file" id="f-photo" accept="image/*" style="width:100%;padding:6px 0" /></div>
+        </div>
+        <div class="row">
           <div style="display:flex;align-items:flex-end">
             <button type="submit" class="btn btn-primary" style="width:100%">Registar Reparação</button>
           </div>
@@ -208,6 +211,10 @@
     <div style="margin-bottom:14px">
       <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Nota</label>
       <textarea id="modal-note" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px;resize:vertical;min-height:70px"></textarea>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.85rem;color:#555;display:block;margin-bottom:4px">Foto do Equipamento</label>
+      <input type="file" id="modal-photo" accept="image/*" style="width:100%;padding:6px 0" />
     </div>
     <div class="modal-footer">
       <button class="btn" style="background:#eee" onclick="closeModal('status-modal')">Cancelar</button>
@@ -322,8 +329,19 @@
       estimatedDelivery: document.getElementById('f-delivery').value,
     };
     const res = await fetch(`${API}/repairs`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    if (res.ok) { toast('Reparação registada!'); document.getElementById('repair-form').reset(); }
-    else toast('Erro ao registar reparação', false);
+    if (res.ok) {
+      const repair = await res.json();
+      const photoFile = document.getElementById('f-photo').files[0];
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append('photo', photoFile);
+        fd.append('repairId', repair.id);
+        fd.append('type', 'before');
+        await fetch(API+'/upload', { method: 'POST', body: fd });
+      }
+      toast('Reparação registada!');
+      document.getElementById('repair-form').reset();
+    } else toast('Erro ao registar reparação', false);
   }
 
   function openStatusModal(id, currentStatus) {
@@ -343,8 +361,17 @@
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ status, note, budget: budget ? parseFloat(budget) : undefined })
     });
-    if (res.ok) { toast('Estado atualizado!'); closeModal('status-modal'); loadRepairs(); }
-    else toast('Erro ao atualizar', false);
+    if (res.ok) {
+      const photoFile = document.getElementById('modal-photo').files[0];
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append('photo', photoFile);
+        fd.append('repairId', id);
+        fd.append('type', 'after');
+        await fetch(API+'/upload', { method: 'POST', body: fd });
+      }
+      toast('Estado atualizado!'); closeModal('status-modal'); loadRepairs();
+    } else toast('Erro ao atualizar', false);
   }
 
   function openNewClientModal() {
