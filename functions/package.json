@@ -6,7 +6,8 @@
     "start": "func start"
   },
   "dependencies": {
+    "@azure/communication-email": "^1.0.0",
     "@azure/cosmos": "^4.0.0",
-    "@azure/communication-email": "^1.0.0"
+    "@azure/storage-blob": "^12.31.0"
   }
 }

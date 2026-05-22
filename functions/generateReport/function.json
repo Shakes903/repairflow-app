@@ -5,7 +5,7 @@
       "name": "documents",
       "direction": "in",
       "leaseContainerName": "leases",
-      "leaseContainerPrefix": "notify",
+      "leaseContainerPrefix": "report",
       "connectionStringSetting": "COSMOS_CONNECTION_STRING",
       "databaseName": "repairflow",
       "containerName": "repairs",
